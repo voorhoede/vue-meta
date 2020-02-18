@@ -13,6 +13,8 @@ import deepmerge from 'deepmerge';
 var version = "2.3.2";
 
 function _typeof(obj) {
+  "@babel/helpers - typeof";
+
   if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
     _typeof = function (obj) {
       return typeof obj;
@@ -248,22 +250,6 @@ function includes(array, value) {
   return array.includes(value);
 }
 
-function ensureIsArray(arg, key) {
-  if (!key || !isObject(arg)) {
-    return isArray(arg) ? arg : [];
-  }
-
-  if (!isArray(arg[key])) {
-    arg[key] = [];
-  }
-
-  return arg;
-}
-function ensuredPush(object, key, el) {
-  ensureIsArray(object, key);
-  object[key].push(el);
-}
-
 function hasMetaInfo(vm) {
   vm = vm || this;
   return vm && (vm[rootConfigKey] === true || isObject(vm[rootConfigKey]));
@@ -320,6 +306,8 @@ function createMixin(Vue, options) {
 
   return {
     beforeCreate: function beforeCreate() {
+      var _this = this;
+
       var rootKey = '$root';
       var $root = this[rootKey];
       var $options = this.$options;
@@ -389,7 +377,7 @@ function createMixin(Vue, options) {
           // if computed $metaInfo exists, watch it for updates & trigger a refresh
           // when it changes (i.e. automatically handle async actions that affect metaInfo)
           // credit for this suggestion goes to [Sébastien Chopin](https://github.com/Atinux)
-          ensuredPush($options, 'created', function () {
+          this.$on('hook:created', function () {
             this.$watch('$metaInfo', function () {
               triggerUpdate(options, this[rootKey], 'watcher');
             });
@@ -407,7 +395,7 @@ function createMixin(Vue, options) {
         if (!$root[rootConfigKey].initialized) {
           if (!$root[rootConfigKey].initializedSsr) {
             $root[rootConfigKey].initializedSsr = true;
-            ensuredPush($options, 'beforeMount', function () {
+            this.$on('hook:beforeMount', function () {
               var $root = this; // if this Vue-app was server rendered, set the appId to 'ssr'
               // only one SSR app per page is supported
 
@@ -418,7 +406,7 @@ function createMixin(Vue, options) {
           } // we use the mounted hook here as on page load
 
 
-          ensuredPush($options, 'mounted', function () {
+          this.$on('hook:mounted', function () {
             var $root = this[rootKey];
 
             if (!$root[rootConfigKey].initialized) {
@@ -468,14 +456,14 @@ function createMixin(Vue, options) {
 
 
       updateOnLifecycleHook.forEach(function (lifecycleHook) {
-        ensuredPush($options, lifecycleHook, function () {
+        _this.$on("hook:".concat(lifecycleHook), function () {
           triggerUpdate(options, this[rootKey], lifecycleHook);
         });
       });
     },
     // TODO: move back into beforeCreate when Vue issue is resolved
     destroyed: function destroyed() {
-      var _this = this;
+      var _this2 = this;
 
       // do not trigger refresh:
       // - when user configured to not wait for transitions on destroyed
@@ -487,20 +475,20 @@ function createMixin(Vue, options) {
 
       delete this._hasMetaInfo;
       this.$nextTick(function () {
-        if (!options.waitOnDestroyed || !_this.$el || !_this.$el.offsetParent) {
-          triggerUpdate(options, _this.$root, 'destroyed');
+        if (!options.waitOnDestroyed || !_this2.$el || !_this2.$el.offsetParent) {
+          triggerUpdate(options, _this2.$root, 'destroyed');
           return;
         } // Wait that element is hidden before refreshing meta tags (to support animations)
 
 
         var interval = setInterval(function () {
-          if (_this.$el && _this.$el.offsetParent !== null) {
+          if (_this2.$el && _this2.$el.offsetParent !== null) {
             /* istanbul ignore next line */
             return;
           }
 
           clearInterval(interval);
-          triggerUpdate(options, _this.$root, 'destroyed');
+          triggerUpdate(options, _this2.$root, 'destroyed');
         }, 50);
       });
     }
@@ -538,6 +526,18 @@ function getOptions(options) {
   }
 
   return optionsCopy;
+}
+
+function ensureIsArray(arg, key) {
+  if (!key || !isObject(arg)) {
+    return isArray(arg) ? arg : [];
+  }
+
+  if (!isArray(arg[key])) {
+    arg[key] = [];
+  }
+
+  return arg;
 }
 
 var clientSequences = [[/&/g, "&"], [/</g, "<"], [/>/g, ">"], [/"/g, "\""], [/'/g, "'"]]; // sanitizes potentially dangerous characters
